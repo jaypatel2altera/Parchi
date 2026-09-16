@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}History · Parchi{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-xl font-extrabold text-slate-900">History</h1>
+  <a href="{% url 'billing:order-list' %}" class="text-xs font-semibold text-brand-600 bg-brand-50 rounded-full px-3 py-1.5">Back to Orders</a>
+</div>
+<p class="text-xs text-slate-400 mb-3">Every sale and order request — online orders and walk-in bills you typed up yourself.</p>
+
+<div class="flex gap-2 mb-4 overflow-x-auto">
+  {% for value, label in status_filters %}
+    <a href="?status={{ value }}"
+       class="shrink-0 text-xs font-semibold rounded-full px-3.5 py-1.5 {% if status == value %}bg-brand-600 text-white{% else %}bg-white text-slate-500 border border-slate-200{% endif %}">
+      {{ label }}
+    </a>
+  {% endfor %}
+</div>
+
+{% if entries %}
+<div class="space-y-3">
+  {% for entry in entries %}
+  <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+    <div class="flex items-start justify-between mb-2">
+      <div>
+        <p class="font-bold text-slate-800">{{ entry.customer_name|default:"Walk-in customer" }}</p>
+        <p class="text-xs text-slate-400">{{ entry.customer_phone }}{% if entry.customer_phone %} &middot; {% endif %}{{ entry.created_at|date:"d M Y, h:i A" }}</p>
+      </div>
+      <span class="text-xs font-semibold rounded-full px-2.5 py-1 shrink-0
+        {% if entry.status == 'PENDING' %}bg-amber-50 text-amber-600
+        {% elif entry.status == 'APPROVED' %}bg-brand-50 text-brand-700
+        {% elif entry.status == 'WALKIN' %}bg-slate-100 text-slate-600
+        {% else %}bg-slate-100 text-slate-500{% endif %}">
+        {{ entry.status_label }}
+      </span>
+    </div>
+
+    <p class="text-xs text-slate-400 mb-2">
+      {% for item in entry.items %}{{ item.product_name_snapshot }} × {{ item.quantity }}{% if not forloop.last %}, {% endif %}{% endfor %}
+    </p>
+    <div class="flex items-center justify-between">
+      <span class="text-sm font-bold text-slate-800">₹{{ entry.total }}</span>
+      {% if entry.bill_id %}
+        <a href="{% url 'billing:bill-whatsapp' entry.bill_id %}" class="text-xs font-semibold text-brand-600">View / resend bill →</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if page_obj.has_other_pages %}
+<div class="flex items-center justify-center gap-4 mt-6">
+  {% if page_obj.has_previous %}
+    <a href="?status={{ status }}&page={{ page_obj.previous_page_number }}" class="text-sm font-semibold text-brand-600">← Newer</a>
+  {% endif %}
+  <span class="text-xs text-slate-400">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+    <a href="?status={{ status }}&page={{ page_obj.next_page_number }}" class="text-sm font-semibold text-brand-600">Older →</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="text-center py-16 bg-white rounded-2xl border border-slate-100">
+  <p class="text-slate-400 text-sm">Nothing here yet.</p>
+</div>
+{% endif %}
+{% endblock %}

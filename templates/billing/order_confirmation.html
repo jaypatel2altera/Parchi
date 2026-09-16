@@ -1,0 +1,36 @@
+{% extends "public_base.html" %}
+{% block title %}Order placed · {{ order.business.name }}{% endblock %}
+{% block content %}
+<div class="text-center pt-14 px-5">
+  <div class="w-16 h-16 rounded-full bg-brand-50 flex items-center justify-center mx-auto mb-4">
+    <svg class="w-8 h-8 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+    </svg>
+  </div>
+  <h1 class="text-xl font-extrabold text-slate-900">Order sent!</h1>
+  <p class="text-sm text-slate-500 mt-1">
+    {{ order.business.name }} will confirm your order shortly on {{ order.customer_phone }}.
+  </p>
+</div>
+
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 mx-4 mt-6 divide-y divide-slate-100">
+  <div class="px-4 py-3 flex items-center justify-between text-sm">
+    <span class="text-slate-400">Order code</span>
+    <span class="font-mono font-semibold text-slate-700">#{{ order.public_id|stringformat:"s"|slice:":8"|upper }}</span>
+  </div>
+  {% for item in order.line_items.all %}
+  <div class="flex items-center justify-between px-4 py-3 text-sm">
+    <span class="text-slate-700">{{ item.product_name_snapshot }} <span class="text-slate-400">× {{ item.quantity }} {{ item.unit_snapshot }}</span></span>
+    <span class="font-semibold text-slate-800">₹{{ item.unit_price_snapshot|floatformat:2 }}</span>
+  </div>
+  {% endfor %}
+  <div class="flex items-center justify-between px-4 py-3 text-base font-bold text-slate-900">
+    <span>Estimated total</span>
+    <span>₹{{ order.estimated_total }}</span>
+  </div>
+</div>
+
+<p class="text-center text-xs text-slate-400 mt-6 px-8">
+  This is an order request, not a confirmed bill yet — the final amount will be confirmed by {{ order.business.name }}.
+</p>
+{% endblock %}

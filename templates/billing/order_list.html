@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Orders · Parchi{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4 gap-2">
+  <h1 class="text-xl font-extrabold text-slate-900">Orders</h1>
+  <div class="flex items-center gap-2 shrink-0">
+    <a href="{% url 'billing:order-history' %}" class="text-xs font-semibold text-slate-500 bg-slate-100 rounded-full px-3 py-1.5">History</a>
+    {% if request.membership.is_admin %}
+    <a href="{% url 'accounts:qr-code' %}" class="text-xs font-semibold text-brand-600 bg-brand-50 rounded-full px-3 py-1.5">Your QR code</a>
+    {% endif %}
+  </div>
+</div>
+
+<h2 class="text-sm font-bold text-slate-700 mb-2">Waiting for you ({{ pending_orders|length }})</h2>
+{% if pending_orders %}
+<div class="space-y-3 mb-6">
+  {% for order in pending_orders %}
+  <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100">
+    <div class="flex items-start justify-between mb-2">
+      <div>
+        <p class="font-bold text-slate-800">{{ order.customer_name }}</p>
+        <p class="text-xs text-slate-400">{{ order.customer_phone }} &middot; {{ order.created_at|date:"d M, h:i A" }}</p>
+      </div>
+      <span class="text-xs font-bold text-amber-600 bg-amber-50 rounded-full px-2.5 py-1">Pending</span>
+    </div>
+
+    <div class="divide-y divide-slate-100 border-y border-slate-100 my-2">
+      {% for item in order.line_items.all %}
+      <div class="flex items-center justify-between py-1.5 text-sm">
+        <span class="text-slate-600">{{ item.product_name_snapshot }} <span class="text-slate-400">× {{ item.quantity }} {{ item.unit_snapshot }}</span></span>
+        <span class="text-slate-700 font-medium">₹{{ item.unit_price_snapshot|floatformat:2 }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="text-right text-sm font-bold text-slate-800 mb-3">Est. total: ₹{{ order.estimated_total }}</p>
+
+    <div class="flex gap-2">
+      <form method="post" action="{% url 'billing:order-reject' order.pk %}" class="flex-1">
+        {% csrf_token %}
+        <button type="submit" class="w-full border border-red-200 text-red-600 font-semibold text-sm rounded-xl py-2.5">Reject</button>
+      </form>
+      <form method="post" action="{% url 'billing:order-approve' order.pk %}" class="flex-1">
+        {% csrf_token %}
+        <button type="submit" class="w-full bg-brand-600 text-white font-semibold text-sm rounded-xl py-2.5">Approve</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-10 bg-white rounded-2xl border border-slate-100 mb-6">
+  <p class="text-slate-400 text-sm">No orders waiting right now.</p>
+</div>
+{% endif %}
+
+{% if recent_orders %}
+<h2 class="text-sm font-bold text-slate-700 mb-2">Recent decisions</h2>
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 divide-y divide-slate-100">
+  {% for order in recent_orders %}
+  <div class="flex items-center justify-between px-4 py-3 text-sm">
+    <span class="text-slate-700">{{ order.customer_name }} <span class="text-slate-400">· {{ order.created_at|date:"d M" }}</span></span>
+    <span class="text-xs font-semibold rounded-full px-2.5 py-1 {% if order.status == 'APPROVED' %}bg-brand-50 text-brand-700{% else %}bg-slate-100 text-slate-500{% endif %}">
+      {{ order.get_status_display }}
+    </span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

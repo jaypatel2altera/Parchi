@@ -1,0 +1,37 @@
+{% extends "public_base.html" %}
+{% block title %}Bill from {{ bill.business.name }}{% endblock %}
+{% block content %}
+<div class="px-4">
+<div class="pt-8 pb-2 text-center">
+  <div class="w-14 h-14 rounded-2xl bg-brand-500 flex items-center justify-center text-white font-extrabold text-xl mx-auto mb-2">
+    {{ bill.business.name|slice:":1" }}
+  </div>
+  <h1 class="text-lg font-extrabold text-slate-900">{{ bill.business.name }}</h1>
+  {% if bill.business.phone or bill.business.email %}
+  <p class="text-xs text-slate-400">
+    {{ bill.business.phone }}{% if bill.business.phone and bill.business.email %} &middot; {% endif %}{{ bill.business.email }}
+  </p>
+  {% endif %}
+  <p class="text-xs text-slate-400 mt-1">{{ bill.created_at|date:"d M Y, h:i A" }}</p>
+</div>
+
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 divide-y divide-slate-100 my-5">
+  {% for item in bill.line_items.all %}
+  <div class="flex items-center justify-between px-4 py-3 text-sm">
+    <span class="text-slate-700">{{ item.product_name_snapshot }} <span class="text-slate-400">× {{ item.quantity }} {{ item.unit_snapshot }}</span></span>
+    <span class="font-semibold text-slate-800">₹{{ item.line_total }}</span>
+  </div>
+  {% endfor %}
+  <div class="flex items-center justify-between px-4 py-3 text-base font-bold text-slate-900">
+    <span>Total</span>
+    <span>₹{{ bill.total_amount }}</span>
+  </div>
+</div>
+
+<a href="{% url 'billing:public-bill-pdf' bill.public_id %}"
+   class="w-full block text-center bg-brand-600 text-white font-semibold rounded-xl py-3 shadow-sm mb-3">
+  Download PDF
+</a>
+<p class="text-center text-xs text-slate-400">This is a temporary bill, not a tax invoice.</p>
+</div>
+{% endblock %}

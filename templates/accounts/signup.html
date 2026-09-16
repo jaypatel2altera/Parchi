@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Sign up · Parchi{% endblock %}
+{% block content %}
+<div class="pt-6">
+  <h1 class="text-2xl font-extrabold text-slate-900">Set up your business</h1>
+  <p class="text-slate-500 text-sm mt-1 mb-6">Create your Parchi account to start managing stock and bills.</p>
+
+  <form method="post" class="space-y-5">
+    {% csrf_token %}
+
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-4">
+      <p class="text-xs font-bold uppercase tracking-wide text-brand-600">Business details</p>
+      {% with field=form.business_name %}
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-1">{{ field.label }}</label>
+          {{ field }}
+          {% for error in field.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+        </div>
+      {% endwith %}
+      {% with field=form.email %}
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-1">{{ field.label }}</label>
+          {{ field }}
+          {% for error in field.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+        </div>
+      {% endwith %}
+      {% with field=form.phone %}
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-1">{{ field.label }}</label>
+          {{ field }}
+          {% for error in field.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+        </div>
+      {% endwith %}
+      <p class="text-xs text-slate-400">Shown to your customers on their bill.</p>
+    </div>
+
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-4">
+      <p class="text-xs font-bold uppercase tracking-wide text-brand-600">Your login</p>
+      {% with field=form.username %}
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-1">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<p class="text-xs text-slate-400 mt-1">{{ field.help_text }}</p>{% endif %}
+          {% for error in field.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+        </div>
+      {% endwith %}
+      {% with field=form.password1 %}
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-1">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<div class="text-xs text-slate-400 mt-1">{{ field.help_text }}</div>{% endif %}
+          {% for error in field.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+        </div>
+      {% endwith %}
+      {% with field=form.password2 %}
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-1">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<p class="text-xs text-slate-400 mt-1">{{ field.help_text }}</p>{% endif %}
+          {% for error in field.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+        </div>
+      {% endwith %}
+    </div>
+
+    {% for error in form.non_field_errors %}<p class="text-xs text-red-600">{{ error }}</p>{% endfor %}
+
+    <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl py-3 shadow-sm transition-colors">
+      Create business
+    </button>
+  </form>
+
+  <p class="text-sm text-slate-500 text-center mt-6">
+    Already have an account? <a href="{% url 'accounts:login' %}" class="text-brand-600 font-semibold">Log in</a>
+  </p>
+</div>
+<style>
+  input, select { width: 100%; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0.65rem 0.9rem; font-size: 0.95rem; background: white; }
+  input:focus, select:focus { outline: none; border-color: #2f9650; box-shadow: 0 0 0 3px rgba(47,150,80,0.15); }
+</style>
+{% endblock %}

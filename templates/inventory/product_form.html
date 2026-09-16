@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{% if object %}Edit product{% else %}New product{% endif %} · Parchi{% endblock %}
+{% block content %}
+<h1 class="text-xl font-extrabold text-slate-900 mb-4">{% if object %}Edit product{% else %}New product{% endif %}</h1>
+
+<form method="post" class="space-y-4">
+  {% csrf_token %}
+  {% for field in form %}
+    <div>
+      <label class="block text-sm font-semibold text-slate-700 mb-1">{{ field.label }}</label>
+      {{ field }}
+      {% for error in field.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+    </div>
+  {% endfor %}
+  <p class="text-xs text-slate-400">Don't see your unit? <a href="{% url 'inventory:unit-create' %}" class="text-brand-600 font-semibold">Add a custom unit</a></p>
+
+  <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl py-3 shadow-sm">Save</button>
+</form>
+
+{% if object %}
+<form method="post" action="{% url 'inventory:product-deactivate' object.pk %}" onsubmit="return confirm('Remove this product from your active catalog? Its past bills and reports are unaffected — you can restore or permanently delete it later from Products → Removed.');" class="mt-3">
+  {% csrf_token %}
+  <button type="submit" class="w-full py-3 rounded-xl border border-red-200 text-red-600 font-semibold text-sm">Remove from catalog</button>
+</form>
+<p class="text-xs text-slate-400 text-center mt-2">This hides it from billing and orders, but keeps it in past reports. Find it under Products → Removed to restore or permanently delete.</p>
+{% endif %}
+<style>
+  input, select { width: 100%; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0.65rem 0.9rem; font-size: 0.95rem; background: white; }
+  input:focus, select:focus { outline: none; border-color: #2f9650; box-shadow: 0 0 0 3px rgba(47,150,80,0.15); }
+</style>
+{% endblock %}

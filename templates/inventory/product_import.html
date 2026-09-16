@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Import products · Parchi{% endblock %}
+{% block content %}
+<h1 class="text-xl font-extrabold text-slate-900 mb-1">Bulk import products</h1>
+<p class="text-sm text-slate-500 mb-5">Add or update many products at once from an Excel file.</p>
+
+<a href="{% url 'inventory:product-import-sample' %}"
+   class="w-full block text-center border border-brand-200 text-brand-700 font-semibold rounded-xl py-3 mb-5">
+  Download sample .xlsx template
+</a>
+
+{% if result %}
+<div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 mb-5">
+  <p class="font-bold text-slate-800 mb-2">Import finished</p>
+  <div class="flex gap-4 text-sm mb-3">
+    <span class="text-brand-600 font-semibold">{{ result.created }} added</span>
+    <span class="text-slate-600 font-semibold">{{ result.updated }} updated</span>
+    {% if result.has_errors %}<span class="text-red-600 font-semibold">{{ result.errors|length }} skipped</span>{% endif %}
+  </div>
+  {% if result.has_errors %}
+  <div class="divide-y divide-slate-100 border-t border-slate-100">
+    {% for row_num, message in result.errors %}
+    <div class="py-2 text-xs">
+      <span class="font-semibold text-red-600">Row {{ row_num }}:</span>
+      <span class="text-slate-500">{{ message }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data" class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-4">
+  {% csrf_token %}
+  <div>
+    <label class="block text-sm font-semibold text-slate-700 mb-1">Excel file (.xlsx)</label>
+    <input type="file" name="file" accept=".xlsx" required
+           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm bg-white">
+    <p class="text-xs text-slate-400 mt-1">
+      Columns: Name, Category, Unit, Stock Qty, Cost Price, Selling Price.
+      A row with a name that already exists updates that product; a new name creates one.
+    </p>
+  </div>
+  <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl py-3 shadow-sm">
+    Import
+  </button>
+</form>
+{% endblock %}

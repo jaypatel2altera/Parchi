@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Your QR code · Parchi{% endblock %}
+{% block content %}
+<h1 class="text-xl font-extrabold text-slate-900 mb-1">Your order QR code</h1>
+<p class="text-sm text-slate-500 mb-5">Print this and put it on your counter. Customers scan it to browse your products and place an order themselves.</p>
+
+<div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col items-center">
+  <img src="{% url 'accounts:qr-code-svg' %}" alt="Order QR code" class="w-56 h-56">
+  <p class="text-xs text-slate-400 mt-4 break-all text-center">{{ order_url }}</p>
+</div>
+
+<a href="{% url 'accounts:qr-code-svg' %}" download="parchi-qr-code.svg"
+   class="w-full block text-center bg-brand-600 text-white font-semibold rounded-xl py-3 shadow-sm mt-4">
+  Download QR code
+</a>
+<a href="{{ order_url }}" target="_blank" rel="noopener"
+   class="w-full block text-center border border-slate-200 text-slate-600 font-semibold rounded-xl py-3 mt-3">
+  Preview your order page
+</a>
+{% endblock %}

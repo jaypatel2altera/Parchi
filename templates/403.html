@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Not available · Parchi{% endblock %}
+{% block content %}
+<div class="text-center pt-16">
+  <div class="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-4">
+    <svg class="w-8 h-8 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zM12 15.75h.008"/>
+    </svg>
+  </div>
+  <h1 class="text-lg font-extrabold text-slate-900 mb-1">This account has no shop to view</h1>
+  <p class="text-sm text-slate-500 max-w-xs mx-auto">
+    {% if request.user.is_superuser %}
+      You're signed in as a platform admin. Use the admin panel to manage businesses or impersonate an owner.
+    {% else %}
+      This login isn't linked to a business yet. Ask your admin to add you as staff.
+    {% endif %}
+  </p>
+  {% if request.user.is_superuser %}
+  <a href="{% url 'accounts:superadmin-dashboard' %}" class="inline-block mt-6 bg-brand-600 text-white font-semibold rounded-xl px-5 py-2.5 text-sm">Go to admin panel</a>
+  {% endif %}
+</div>
+{% endblock %}

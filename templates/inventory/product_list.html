@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Products · Parchi{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4 gap-2">
+  <div>
+    <h1 class="text-xl font-extrabold text-slate-900">Your products</h1>
+    <p class="text-sm text-slate-500">{{ products|length }} item{{ products|length|pluralize }}{% if show_removed %} removed{% else %} in catalog{% endif %}</p>
+  </div>
+  <a href="{% url 'inventory:product-import' %}" class="text-xs font-semibold text-slate-500 bg-slate-100 rounded-full px-3 py-1.5 shrink-0">Import</a>
+</div>
+
+<div class="flex gap-2 mb-4">
+  <a href="?" class="text-xs font-semibold rounded-full px-3.5 py-1.5 {% if not show_removed %}bg-brand-600 text-white{% else %}bg-white text-slate-500 border border-slate-200{% endif %}">Active</a>
+  <a href="?show=removed" class="text-xs font-semibold rounded-full px-3.5 py-1.5 {% if show_removed %}bg-brand-600 text-white{% else %}bg-white text-slate-500 border border-slate-200{% endif %}">Removed ({{ removed_count }})</a>
+</div>
+
+<form method="get" class="mb-4">
+  {% if show_removed %}<input type="hidden" name="show" value="removed">{% endif %}
+  <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Search products..."
+    class="w-full border border-slate-200 rounded-full px-4 py-2.5 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
+</form>
+
+{% if products %}
+<div class="space-y-2">
+  {% for p in products %}
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 {% if show_removed %}opacity-70{% endif %}">
+      <a href="{% url 'inventory:product-update' p.pk %}" class="block tap active:scale-[0.99] transition-transform">
+        <div class="flex items-center justify-between">
+          <div class="min-w-0">
+            <p class="font-semibold text-slate-800 truncate">{{ p.name }}</p>
+            <p class="text-xs text-slate-400">{% if p.category %}{{ p.category }} · {% endif %}₹{{ p.selling_price }} / {{ p.unit }}</p>
+          </div>
+          <div class="text-right shrink-0 ml-3">
+            <p class="text-sm font-bold {% if p.is_low_stock %}text-red-500{% else %}text-brand-600{% endif %}">{{ p.stock_qty }}</p>
+            <p class="text-[10px] text-slate-400 uppercase">{{ p.unit }} left</p>
+          </div>
+        </div>
+      </a>
+      {% if show_removed %}
+      <div class="flex gap-2 mt-3">
+        <form method="post" action="{% url 'inventory:product-restore' p.pk %}" class="flex-1">
+          {% csrf_token %}
+          <button type="submit" class="w-full border border-brand-200 text-brand-700 font-semibold text-xs rounded-xl py-2">Restore</button>
+        </form>
+        <form method="post" action="{% url 'inventory:product-delete' p.pk %}" class="flex-1"
+              onsubmit="return confirm('Permanently delete {{ p.name|escapejs }}? This only works if it has no past bills or orders.');">
+          {% csrf_token %}
+          <button type="submit" class="w-full border border-red-200 text-red-600 font-semibold text-xs rounded-xl py-2">Delete permanently</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-20">
+  {% if show_removed %}
+  <p class="text-slate-400 mb-2">No removed products</p>
+  {% else %}
+  <p class="text-slate-400 mb-2">No products yet</p>
+  <p class="text-sm text-slate-400">Tap the + button to add your first item, or import a batch</p>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if not show_removed %}
+<a href="{% url 'inventory:product-create' %}"
+   class="fixed bottom-24 right-5 z-40 w-14 h-14 rounded-full bg-brand-600 text-white shadow-lg flex items-center justify-center text-3xl font-light tap active:scale-95 transition-transform">
+  +
+</a>
+{% endif %}
+{% endblock %}

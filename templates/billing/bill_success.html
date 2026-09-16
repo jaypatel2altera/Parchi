@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Bill · Parchi{% endblock %}
+{% block content %}
+<div class="text-center pt-6 pb-4">
+  <div class="w-16 h-16 rounded-full bg-brand-50 flex items-center justify-center mx-auto mb-3">
+    <svg class="w-8 h-8 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+    </svg>
+  </div>
+  <h1 class="text-xl font-extrabold text-slate-900">Bill</h1>
+  <p class="text-xs text-slate-400">{{ bill.created_at|date:"d M Y, h:i A" }}{% if bill.customer_name %} &middot; {{ bill.customer_name }}{% endif %}</p>
+  <p class="text-sm text-slate-500 mt-1">Total: <span class="font-bold text-slate-800">₹{{ bill.total_amount }}</span></p>
+</div>
+
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 divide-y divide-slate-100 mb-6">
+  {% for item in bill.line_items.all %}
+  <div class="flex items-center justify-between px-4 py-3 text-sm">
+    <span class="text-slate-700">{{ item.product_name_snapshot }} <span class="text-slate-400">× {{ item.quantity }} {{ item.unit_snapshot }}</span></span>
+    <span class="font-semibold text-slate-800">₹{{ item.line_total }}</span>
+  </div>
+  {% endfor %}
+</div>
+
+{% if whatsapp_url %}
+<a href="{{ whatsapp_url }}" target="_blank" rel="noopener"
+   class="w-full block text-center bg-[#25D366] hover:bg-[#1ebe5a] text-white font-semibold rounded-xl py-3 shadow-sm mb-3">
+  Send on WhatsApp
+</a>
+<a href="{{ public_url }}" target="_blank" rel="noopener" class="w-full block text-center text-brand-600 font-semibold text-sm mb-6">
+  View bill link
+</a>
+{% endif %}
+
+<form method="post" action="{% url 'billing:bill-regenerate-pdf' bill.pk %}" class="mb-3">
+  {% csrf_token %}
+  <button type="submit" class="w-full border border-slate-200 text-slate-600 font-semibold rounded-xl py-3">
+    Regenerate PDF
+  </button>
+</form>
+
+<a href="{% url 'billing:order-history' %}" class="w-full block text-center border border-slate-200 text-slate-600 font-semibold rounded-xl py-3 mb-3">
+  Back to order history
+</a>
+<a href="{% url 'billing:bill-create' %}" class="w-full block text-center text-brand-600 font-semibold text-sm">
+  Start a new bill
+</a>
+{% endblock %}
