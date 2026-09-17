@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django import forms
 from django.db.models import Q
 
@@ -32,3 +34,9 @@ class UnitForm(forms.ModelForm):
     class Meta:
         model = Unit
         fields = ["name", "abbreviation"]
+
+
+class RestockForm(forms.Form):
+    quantity_added = forms.DecimalField(max_digits=10, decimal_places=3, min_value=Decimal("0.001"))
+    new_cost_price = forms.DecimalField(max_digits=10, decimal_places=2, min_value=Decimal("0"))
+    new_selling_price = forms.DecimalField(max_digits=10, decimal_places=2, min_value=Decimal("0"))
