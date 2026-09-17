@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Restock {{ product.name }} · Parchi{% endblock %}
+{% block content %}
+<h1 class="text-xl font-extrabold text-slate-900 mb-1">Restock '{{ product.name }}'</h1>
+<p class="text-sm text-slate-500 mb-4">Currently {{ product.stock_qty }} {{ product.unit }} at ₹{{ product.cost_price }} avg. cost, selling at ₹{{ product.selling_price }}.</p>
+
+<form method="post" class="space-y-4">
+  {% csrf_token %}
+  {% for field in form %}
+    <div>
+      <label class="block text-sm font-semibold text-slate-700 mb-1">{{ field.label }}</label>
+      {{ field }}
+      {% if field.name == "quantity_added" %}
+        <p class="text-xs text-slate-400 mt-1">How many {{ product.unit }} are you adding to stock.</p>
+      {% elif field.name == "new_cost_price" %}
+        <p class="text-xs text-slate-400 mt-1">Price you paid per {{ product.unit }} this time. Blended with existing stock into a new average cost.</p>
+      {% elif field.name == "new_selling_price" %}
+        <p class="text-xs text-slate-400 mt-1">Applies to all {{ product.name }} in stock, old and new — pre-filled with the current price.</p>
+      {% endif %}
+      {% for error in field.errors %}<p class="text-xs text-red-600 mt-1">{{ error }}</p>{% endfor %}
+    </div>
+  {% endfor %}
+
+  <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl py-3 shadow-sm">Add stock</button>
+</form>
+<style>
+  input, select { width: 100%; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0.65rem 0.9rem; font-size: 0.95rem; background: white; }
+  input:focus, select:focus { outline: none; border-color: #2f9650; box-shadow: 0 0 0 3px rgba(47,150,80,0.15); }
+</style>
+{% endblock %}

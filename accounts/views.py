@@ -2,7 +2,8 @@ import qrcode
 import qrcode.image.svg
 from django.contrib import messages
 from django.contrib.auth import login
-from django.contrib.auth.views import LoginView
+from django.contrib.auth.forms import SetPasswordForm
+from django.contrib.auth.views import LoginView, PasswordChangeView
 from django.db import models, transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -10,7 +11,7 @@ from django.urls import reverse, reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, ListView
 
-from .forms import SignupForm, StaffCreationForm
+from .forms import BusinessSettingsForm, SignupForm, StaffCreationForm, StaffProfileForm
 from .mixins import AdminRequiredMixin, SuperuserRequiredMixin
 from .models import Business, Membership
 
@@ -64,6 +65,115 @@ class StaffCreateView(AdminRequiredMixin, View):
             messages.success(request, f"Staff login '{user.username}' created.")
             return redirect("accounts:staff-list")
         return render(request, self.template_name, {"form": form})
+
+
+class BusinessSettingsView(AdminRequiredMixin, View):
+    template_name = "accounts/business_settings.html"
+
+    def get(self, request):
+        form = BusinessSettingsForm(instance=request.business)
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request):
+        form = BusinessSettingsForm(request.POST, instance=request.business)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Business details updated.")
+            return redirect("accounts:business-settings")
+        return render(request, self.template_name, {"form": form})
+
+
+class StaffUpdateView(AdminRequiredMixin, View):
+    """Lets an Admin update a staff member's own contact details on their
+    behalf (name/email) — the staff login itself (username/password) is
+    changed separately via reset-password."""
+
+    template_name = "accounts/staff_profile_form.html"
+
+    def get(self, request, pk):
+        membership = get_object_or_404(
+            Membership, pk=pk, business=request.business, role=Membership.STAFF
+        )
+        form = StaffProfileForm(instance=membership.user)
+        return render(request, self.template_name, {"form": form, "membership": membership})
+
+    def post(self, request, pk):
+        membership = get_object_or_404(
+            Membership, pk=pk, business=request.business, role=Membership.STAFF
+        )
+        form = StaffProfileForm(request.POST, instance=membership.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Updated '{membership.user.username}'.")
+            return redirect("accounts:staff-list")
+        return render(request, self.template_name, {"form": form, "membership": membership})
+
+
+class StaffResetPasswordView(AdminRequiredMixin, View):
+    """Admin sets a brand-new password for a staff login directly (e.g. the
+    staff member forgot theirs). Always also flags must_change_password, so
+    the staff member is made to set their own password at next login instead
+    of carrying on with one the Admin knows."""
+
+    template_name = "accounts/staff_reset_password.html"
+
+    def get(self, request, pk):
+        membership = get_object_or_404(
+            Membership, pk=pk, business=request.business, role=Membership.STAFF
+        )
+        form = SetPasswordForm(membership.user)
+        return render(request, self.template_name, {"form": form, "membership": membership})
+
+    def post(self, request, pk):
+        membership = get_object_or_404(
+            Membership, pk=pk, business=request.business, role=Membership.STAFF
+        )
+        form = SetPasswordForm(membership.user, request.POST)
+        if form.is_valid():
+            form.save()
+            membership.must_change_password = True
+            membership.save(update_fields=["must_change_password"])
+            messages.success(
+                request,
+                f"Password reset for '{membership.user.username}'. "
+                f"They'll be asked to set their own password at next login.",
+            )
+            return redirect("accounts:staff-list")
+        return render(request, self.template_name, {"form": form, "membership": membership})
+
+
+class StaffForcePasswordChangeView(AdminRequiredMixin, View):
+    """Flags a staff login to be prompted for a new password at next login,
+    without the Admin having to know or set one."""
+
+    def post(self, request, pk):
+        membership = get_object_or_404(
+            Membership, pk=pk, business=request.business, role=Membership.STAFF
+        )
+        membership.must_change_password = True
+        membership.save(update_fields=["must_change_password"])
+        messages.success(
+            request, f"'{membership.user.username}' will be asked to set a new password at next login."
+        )
+        return redirect("accounts:staff-list")
+
+
+class ForcedPasswordChangeView(PasswordChangeView):
+    """Where BusinessMiddleware redirects a user with must_change_password
+    set. Reuses Django's own PasswordChangeView (needs the current/temp
+    password, so this doubles as confirming they actually know it)."""
+
+    template_name = "accounts/force_password_change.html"
+    success_url = reverse_lazy("inventory:product-list")
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        membership = getattr(self.request.user, "membership", None)
+        if membership is not None:
+            membership.must_change_password = False
+            membership.save(update_fields=["must_change_password"])
+        messages.success(self.request, "Password updated.")
+        return response
 
 
 class SuperAdminDashboardView(SuperuserRequiredMixin, ListView):

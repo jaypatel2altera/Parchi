@@ -48,7 +48,11 @@
     </div>
     <div class="flex items-center gap-2 min-w-0">
       {% if request.business %}
-        <span class="text-xs font-semibold text-brand-700 bg-brand-50 rounded-full px-3 py-1 truncate max-w-[110px]">{{ request.business.name }}</span>
+        {% if request.membership.is_admin %}
+          <a href="{% url 'accounts:business-settings' %}" class="text-xs font-semibold text-brand-700 bg-brand-50 rounded-full px-3 py-1 truncate max-w-[110px]">{{ request.business.name }}</a>
+        {% else %}
+          <span class="text-xs font-semibold text-brand-700 bg-brand-50 rounded-full px-3 py-1 truncate max-w-[110px]">{{ request.business.name }}</span>
+        {% endif %}
       {% endif %}
       {% if request.membership %}
         <form method="post" action="{% url 'accounts:logout' %}" class="shrink-0">

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib import messages
 from django.db.models import ProtectedError, Q
 from django.http import HttpResponse, JsonResponse
@@ -8,7 +10,7 @@ from django.views.generic import CreateView, ListView, UpdateView
 
 from accounts.mixins import AdminRequiredMixin, BusinessQuerysetMixin
 
-from .forms import ProductForm, UnitForm
+from .forms import ProductForm, RestockForm, UnitForm
 from .imports import build_sample_workbook, import_products_from_workbook
 from .models import Product, Unit
 
@@ -112,6 +114,52 @@ class ProductDeleteView(AdminRequiredMixin, View):
         else:
             messages.success(request, f"'{name}' permanently deleted.")
         return redirect(f"{reverse_lazy('inventory:product-list')}?show=removed")
+
+
+class ProductRestockView(AdminRequiredMixin, View):
+    """Adds newly-purchased stock to a product. New cost is blended into the
+    existing cost_price as a running weighted average (old stock's original
+    cost is never re-priced), while the selling price is simply replaced —
+    this business sells everything on hand at the current price, not the
+    price it happened to be bought at."""
+
+    template_name = "inventory/restock_form.html"
+
+    def get(self, request, pk):
+        product = get_object_or_404(Product.objects.for_business(request.business), pk=pk)
+        form = RestockForm(initial={
+            "new_cost_price": product.cost_price,
+            "new_selling_price": product.selling_price,
+        })
+        return render(request, self.template_name, {"form": form, "product": product})
+
+    def post(self, request, pk):
+        product = get_object_or_404(Product.objects.for_business(request.business), pk=pk)
+        form = RestockForm(request.POST)
+        if not form.is_valid():
+            return render(request, self.template_name, {"form": form, "product": product})
+
+        added_qty = form.cleaned_data["quantity_added"]
+        new_cost_price = form.cleaned_data["new_cost_price"]
+        new_selling_price = form.cleaned_data["new_selling_price"]
+
+        old_qty = product.stock_qty
+        total_qty = old_qty + added_qty
+        weighted_cost = (
+            (old_qty * product.cost_price) + (added_qty * new_cost_price)
+        ) / total_qty
+
+        product.stock_qty = total_qty
+        product.cost_price = weighted_cost.quantize(Decimal("0.01"))
+        product.selling_price = new_selling_price
+        product.save(update_fields=["stock_qty", "cost_price", "selling_price"])
+
+        messages.success(
+            request,
+            f"Added {added_qty} {product.unit} to '{product.name}'. "
+            f"Now {product.stock_qty} {product.unit} in stock at ₹{product.cost_price} avg. cost.",
+        )
+        return redirect("inventory:product-list")
 
 
 class UnitCreateView(AdminRequiredMixin, View):
