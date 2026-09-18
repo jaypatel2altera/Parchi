@@ -48,15 +48,17 @@ class Business(models.Model):
         business's UPI ID with no payment gateway or transaction fees.
         Returns None if the business hasn't set a UPI ID.
 
-        `reference` is sent as UPI's 'tr' (transaction reference) field
-        rather than 'tn' (transaction note) — apps show 'tn' as a free-text
-        note the payer can edit before paying, while 'tr' is treated as a
-        fixed merchant reference, so the order/bill ID reaches the payment
-        app unchanged."""
+        `reference` is sent as both UPI's 'tn' (transaction note) and 'tr'
+        (transaction reference) fields. 'tn' is what apps like GPay actually
+        display to the payer as the message — but it's a free-text field the
+        payer can still edit before paying, since UPI has no field that's
+        both visible and locked. 'tr' is sent alongside as a fixed backend
+        reference for reconciliation even if the payer edits the note."""
         if not self.upi_id:
             return None
         params = {"pa": self.upi_id, "pn": self.name, "am": str(amount), "cu": "INR"}
         if reference:
+            params["tn"] = reference
             params["tr"] = reference
         return f"upi://pay?{urlencode(params)}"
 
