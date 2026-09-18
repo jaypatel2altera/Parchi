@@ -1,9 +1,12 @@
+import re
 from urllib.parse import quote
 
+import qrcode
+import qrcode.image.svg
 from django.contrib import messages
 from django.core.files.base import ContentFile
 from django.core.paginator import Paginator
-from django.http import FileResponse, Http404, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views import View
@@ -15,6 +18,20 @@ from inventory.models import Product
 from .models import Bill, Order
 from .pdf import render_bill_pdf
 from .services import CartError, approve_order, create_bill, create_order, parse_cart, reject_order
+
+PHONE_RE = re.compile(r"^\d{10}$")
+
+
+def is_valid_phone(phone):
+    return bool(PHONE_RE.fullmatch(phone))
+
+
+def whatsapp_number(phone):
+    """Customer phone numbers are stored as a plain 10-digit number; wa.me
+    links need the country code in front. Assume India (91) — numbers from
+    older data that already carry a country code are left as-is."""
+    digits = re.sub(r"\D", "", phone)
+    return f"91{digits}" if len(digits) == 10 else digits
 
 
 class BillCreateView(BusinessRequiredMixin, View):
@@ -30,14 +47,25 @@ class BillCreateView(BusinessRequiredMixin, View):
         products = Product.objects.for_business(request.business).filter(is_active=True).select_related(
             "unit"
         )
+        payment_method = request.POST.get("payment_method", Bill.CASH)
+        if payment_method not in dict(Bill.PAYMENT_METHOD_CHOICES):
+            payment_method = Bill.CASH
+        customer_phone = request.POST.get("customer_phone", "").strip()
+        if customer_phone and not is_valid_phone(customer_phone):
+            return render(
+                request,
+                self.template_name,
+                {"products": products, "error": "WhatsApp number must be exactly 10 digits."},
+            )
         try:
             cart_items = parse_cart(request.business, request.POST)
             bill = create_bill(
                 business=request.business,
                 user=request.user,
                 customer_name=request.POST.get("customer_name", "").strip(),
-                customer_phone=request.POST.get("customer_phone", "").strip(),
+                customer_phone=customer_phone,
                 cart_items=cart_items,
+                payment_method=payment_method,
             )
         except CartError as exc:
             return render(
@@ -64,7 +92,11 @@ class BillWhatsAppView(BusinessRequiredMixin, View):
         )
         message = f"Your bill from {bill.business.name}: {public_url}"
         phone = bill.customer_phone.strip()
-        whatsapp_url = f"https://wa.me/{phone}?text={quote(message)}" if phone else f"https://wa.me/?text={quote(message)}"
+        whatsapp_url = (
+            f"https://wa.me/{whatsapp_number(phone)}?text={quote(message)}"
+            if phone
+            else f"https://wa.me/?text={quote(message)}"
+        )
         return render(
             request,
             "billing/bill_success.html",
@@ -93,7 +125,8 @@ class PublicBillView(View):
 
     def get(self, request, public_id):
         bill = get_object_or_404(Bill, public_id=public_id)
-        return render(request, "billing/public_bill.html", {"bill": bill})
+        pay_link = bill.business.upi_payment_link(bill.total_amount, note=f"Bill {bill.public_id}")
+        return render(request, "billing/public_bill.html", {"bill": bill, "pay_link": pay_link})
 
 
 class PublicBillPDFView(View):
@@ -104,6 +137,23 @@ class PublicBillPDFView(View):
         if not bill.pdf_file:
             raise Http404("PDF not available.")
         return FileResponse(bill.pdf_file.open("rb"), filename=f"bill-{bill.public_id}.pdf")
+
+
+class PublicBillUPIQRView(View):
+    """QR code of this bill's UPI pay link, embedded on the public bill page
+    for anyone viewing it on a desktop/second device. Same intentional
+    public-by-UUID exception as PublicBillView. Money paid this way goes
+    straight to the business's UPI ID — no gateway, no fees."""
+
+    def get(self, request, public_id):
+        bill = get_object_or_404(Bill, public_id=public_id)
+        pay_link = bill.business.upi_payment_link(bill.total_amount, note=f"Bill {bill.public_id}")
+        if not pay_link:
+            raise Http404("This business hasn't set up UPI payments.")
+        img = qrcode.make(pay_link, image_factory=qrcode.image.svg.SvgPathImage, box_size=8)
+        response = HttpResponse(content_type="image/svg+xml")
+        img.save(response)
+        return response
 
 
 class PublicOrderView(View):
@@ -128,6 +178,8 @@ class PublicOrderView(View):
 
         if not customer_name or not customer_phone:
             error = "Please enter your name and mobile number."
+        elif not is_valid_phone(customer_phone):
+            error = "Mobile number must be exactly 10 digits."
         else:
             try:
                 cart_items = parse_cart(business, request.POST)
@@ -154,7 +206,24 @@ class OrderConfirmationView(View):
 
     def get(self, request, public_id):
         order = get_object_or_404(Order, public_id=public_id)
-        return render(request, "billing/order_confirmation.html", {"order": order})
+        pay_link = order.business.upi_payment_link(order.estimated_total, note=f"Order {order.public_id}")
+        return render(request, "billing/order_confirmation.html", {"order": order, "pay_link": pay_link})
+
+
+class OrderUPIQRView(View):
+    """QR code of a pending order's estimated UPI pay link — lets an eager
+    customer pay up front, before the shop confirms the order. Same
+    intentional public-by-UUID exception as OrderConfirmationView."""
+
+    def get(self, request, public_id):
+        order = get_object_or_404(Order, public_id=public_id)
+        pay_link = order.business.upi_payment_link(order.estimated_total, note=f"Order {order.public_id}")
+        if not pay_link:
+            raise Http404("This business hasn't set up UPI payments.")
+        img = qrcode.make(pay_link, image_factory=qrcode.image.svg.SvgPathImage, box_size=8)
+        response = HttpResponse(content_type="image/svg+xml")
+        img.save(response)
+        return response
 
 
 class OrderListView(BusinessRequiredMixin, View):
@@ -195,7 +264,9 @@ class OrderHistoryView(BusinessRequiredMixin, View):
     def get(self, request):
         status = request.GET.get("status", "").upper()
 
-        orders = Order.objects.for_business(request.business).prefetch_related("line_items")
+        orders = Order.objects.for_business(request.business).prefetch_related("line_items").select_related(
+            "bill"
+        )
         # Walk-in sales: bills with no linked order at all (i.e. typed up
         # directly via New Bill, not born from a customer's QR order).
         walkin_bills = Bill.objects.for_business(request.business).filter(order__isnull=True).prefetch_related(
@@ -212,6 +283,7 @@ class OrderHistoryView(BusinessRequiredMixin, View):
                 "total": order.estimated_total,
                 "items": order.line_items.all(),
                 "bill_id": order.bill_id,
+                "payment_method_label": order.bill.get_payment_method_display() if order.bill_id else None,
             }
             for order in orders
         ] + [
@@ -224,6 +296,7 @@ class OrderHistoryView(BusinessRequiredMixin, View):
                 "total": bill.total_amount,
                 "items": bill.line_items.all(),
                 "bill_id": bill.id,
+                "payment_method_label": bill.get_payment_method_display(),
             }
             for bill in walkin_bills
         ]
@@ -249,8 +322,11 @@ class OrderHistoryView(BusinessRequiredMixin, View):
 class OrderApproveView(BusinessRequiredMixin, View):
     def post(self, request, pk):
         order = get_object_or_404(Order.objects.for_business(request.business), pk=pk)
+        payment_method = request.POST.get("payment_method", Bill.CASH)
+        if payment_method not in dict(Bill.PAYMENT_METHOD_CHOICES):
+            payment_method = Bill.CASH
         try:
-            bill = approve_order(order, request.user)
+            bill = approve_order(order, request.user, payment_method)
         except CartError as exc:
             messages.error(request, exc.message if hasattr(exc, "message") else str(exc))
             return redirect("billing:order-list")

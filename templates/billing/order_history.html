@@ -38,7 +38,10 @@
       {% for item in entry.items %}{{ item.product_name_snapshot }} × {{ item.quantity }}{% if not forloop.last %}, {% endif %}{% endfor %}
     </p>
     <div class="flex items-center justify-between">
-      <span class="text-sm font-bold text-slate-800">₹{{ entry.total }}</span>
+      <span class="text-sm font-bold text-slate-800">
+        ₹{{ entry.total }}
+        {% if entry.payment_method_label %}<span class="text-xs font-semibold text-slate-400">· {{ entry.payment_method_label }}</span>{% endif %}
+      </span>
       {% if entry.bill_id %}
         <a href="{% url 'billing:bill-whatsapp' entry.bill_id %}" class="text-xs font-semibold text-brand-600">View / resend bill →</a>
       {% endif %}

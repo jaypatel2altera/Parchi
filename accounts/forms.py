@@ -49,7 +49,11 @@ class StaffCreationForm(UserCreationForm):
 class BusinessSettingsForm(forms.ModelForm):
     class Meta:
         model = Business
-        fields = ["name", "email", "phone", "address"]
+        fields = ["name", "email", "phone", "address", "upi_id"]
+        widgets = {"upi_id": forms.TextInput(attrs={"placeholder": "yourname@bank"})}
+        help_texts = {
+            "upi_id": "Optional. Adds a free 'Pay via UPI' option to your bills — no gateway or fees, paid straight to this UPI ID."
+        }
 
 
 class StaffProfileForm(forms.ModelForm):
