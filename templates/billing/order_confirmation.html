@@ -16,7 +16,7 @@
 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 mx-4 mt-6 divide-y divide-slate-100">
   <div class="px-4 py-3 flex items-center justify-between text-sm">
     <span class="text-slate-400">Order code</span>
-    <span class="font-mono font-semibold text-slate-700">#{{ order.public_id|stringformat:"s"|slice:":8"|upper }}</span>
+    <span class="font-mono font-semibold text-slate-700">#{{ order.short_code }}</span>
   </div>
   {% for item in order.line_items.all %}
   <div class="flex items-center justify-between px-4 py-3 text-sm">
