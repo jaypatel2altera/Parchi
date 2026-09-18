@@ -16,6 +16,10 @@
 </div>
 
 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 divide-y divide-slate-100 my-5">
+  <div class="px-4 py-3 flex items-center justify-between text-sm">
+    <span class="text-slate-400">Bill code</span>
+    <span class="font-mono font-semibold text-slate-700">#{{ bill.short_code }}</span>
+  </div>
   {% for item in bill.line_items.all %}
   <div class="flex items-center justify-between px-4 py-3 text-sm">
     <span class="text-slate-700">{{ item.product_name_snapshot }} <span class="text-slate-400">× {{ item.quantity }} {{ item.unit_snapshot }}</span></span>

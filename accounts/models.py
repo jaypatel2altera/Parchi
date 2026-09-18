@@ -42,16 +42,22 @@ class Business(models.Model):
     def bill_count(self):
         return self.bills.count()
 
-    def upi_payment_link(self, amount, note=""):
+    def upi_payment_link(self, amount, reference=""):
         """Standard UPI 'intent' link (upi://pay?...) recognised by every UPI
         app (GPay, PhonePe, Paytm, ...) — money goes straight to this
         business's UPI ID with no payment gateway or transaction fees.
-        Returns None if the business hasn't set a UPI ID."""
+        Returns None if the business hasn't set a UPI ID.
+
+        `reference` is sent as UPI's 'tr' (transaction reference) field
+        rather than 'tn' (transaction note) — apps show 'tn' as a free-text
+        note the payer can edit before paying, while 'tr' is treated as a
+        fixed merchant reference, so the order/bill ID reaches the payment
+        app unchanged."""
         if not self.upi_id:
             return None
         params = {"pa": self.upi_id, "pn": self.name, "am": str(amount), "cu": "INR"}
-        if note:
-            params["tn"] = note
+        if reference:
+            params["tr"] = reference
         return f"upi://pay?{urlencode(params)}"
 
     @property

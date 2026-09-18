@@ -45,6 +45,10 @@ class Bill(models.Model):
     def __str__(self):
         return f"Bill {self.public_id} ({self.business.name})"
 
+    @property
+    def short_code(self):
+        return str(self.public_id)[:8].upper()
+
 
 class BillLineItem(models.Model):
     bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name="line_items")
@@ -91,6 +95,10 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Order {self.public_id} ({self.status})"
+
+    @property
+    def short_code(self):
+        return str(self.public_id)[:8].upper()
 
 
 class OrderLineItem(models.Model):

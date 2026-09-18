@@ -34,6 +34,14 @@ def whatsapp_number(phone):
     return f"91{digits}" if len(digits) == 10 else digits
 
 
+def upi_reference(short_code, customer_name):
+    """Builds the UPI 'tr' value: the order/bill's short code plus the
+    first few letters of the customer's name, so it's recognisable but
+    still short and free of spaces/punctuation some UPI apps reject."""
+    name_part = re.sub(r"[^A-Za-z0-9]", "", customer_name or "")[:8].upper()
+    return f"{short_code}{name_part}" if name_part else short_code
+
+
 class BillCreateView(BusinessRequiredMixin, View):
     template_name = "billing/bill_create.html"
 
@@ -125,7 +133,9 @@ class PublicBillView(View):
 
     def get(self, request, public_id):
         bill = get_object_or_404(Bill, public_id=public_id)
-        pay_link = bill.business.upi_payment_link(bill.total_amount, note=f"Bill {bill.public_id}")
+        pay_link = bill.business.upi_payment_link(
+            bill.total_amount, reference=upi_reference(bill.short_code, bill.customer_name)
+        )
         return render(request, "billing/public_bill.html", {"bill": bill, "pay_link": pay_link})
 
 
@@ -147,7 +157,9 @@ class PublicBillUPIQRView(View):
 
     def get(self, request, public_id):
         bill = get_object_or_404(Bill, public_id=public_id)
-        pay_link = bill.business.upi_payment_link(bill.total_amount, note=f"Bill {bill.public_id}")
+        pay_link = bill.business.upi_payment_link(
+            bill.total_amount, reference=upi_reference(bill.short_code, bill.customer_name)
+        )
         if not pay_link:
             raise Http404("This business hasn't set up UPI payments.")
         img = qrcode.make(pay_link, image_factory=qrcode.image.svg.SvgPathImage, box_size=8)
@@ -206,7 +218,9 @@ class OrderConfirmationView(View):
 
     def get(self, request, public_id):
         order = get_object_or_404(Order, public_id=public_id)
-        pay_link = order.business.upi_payment_link(order.estimated_total, note=f"Order {order.public_id}")
+        pay_link = order.business.upi_payment_link(
+            order.estimated_total, reference=upi_reference(order.short_code, order.customer_name)
+        )
         return render(request, "billing/order_confirmation.html", {"order": order, "pay_link": pay_link})
 
 
@@ -217,7 +231,9 @@ class OrderUPIQRView(View):
 
     def get(self, request, public_id):
         order = get_object_or_404(Order, public_id=public_id)
-        pay_link = order.business.upi_payment_link(order.estimated_total, note=f"Order {order.public_id}")
+        pay_link = order.business.upi_payment_link(
+            order.estimated_total, reference=upi_reference(order.short_code, order.customer_name)
+        )
         if not pay_link:
             raise Http404("This business hasn't set up UPI payments.")
         img = qrcode.make(pay_link, image_factory=qrcode.image.svg.SvgPathImage, box_size=8)
