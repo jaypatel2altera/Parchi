@@ -35,11 +35,13 @@ def whatsapp_number(phone):
 
 
 def upi_reference(short_code, customer_name):
-    """Builds the UPI 'tr' value: the order/bill's short code plus the
-    first few letters of the customer's name, so it's recognisable but
-    still short and free of spaces/punctuation some UPI apps reject."""
-    name_part = re.sub(r"[^A-Za-z0-9]", "", customer_name or "")[:8].upper()
-    return f"{short_code}{name_part}" if name_part else short_code
+    """Builds the UPI note/reference, e.g. '5C14526B_JAY_PATEL' — the
+    order/bill's short code, then the customer's name in caps with spaces
+    turned into underscores. A blank name just leaves the code by itself."""
+    name_part = re.sub(r"[^A-Za-z\s]", "", customer_name or "").strip()
+    name_part = "_".join(name_part.upper().split())
+    reference = f"{short_code}_{name_part}" if name_part else short_code
+    return reference[:50]
 
 
 class BillCreateView(BusinessRequiredMixin, View):
