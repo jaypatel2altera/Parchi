@@ -30,6 +30,18 @@
   </div>
 </div>
 
+{% if pay_link %}
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 mx-4 mt-4 p-4 text-center">
+  <p class="text-sm font-semibold text-slate-700 mb-3">Pay online via UPI</p>
+  <img src="{% url 'billing:order-upi-qr' order.public_id %}" alt="UPI QR code" class="w-36 h-36 mx-auto mb-3">
+  <a href="{{ pay_link }}"
+     class="w-full block text-center bg-brand-600 text-white font-semibold rounded-xl py-3 shadow-sm">
+    Pay ₹{{ order.estimated_total }} with UPI app
+  </a>
+  <p class="text-xs text-slate-400 mt-2">Optional — you can also pay {{ order.business.name }} in person. Free, no fees.</p>
+</div>
+{% endif %}
+
 <p class="text-center text-xs text-slate-400 mt-6 px-8">
   This is an order request, not a confirmed bill yet — the final amount will be confirmed by {{ order.business.name }}.
 </p>

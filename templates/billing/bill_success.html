@@ -10,6 +10,7 @@
   <h1 class="text-xl font-extrabold text-slate-900">Bill</h1>
   <p class="text-xs text-slate-400">{{ bill.created_at|date:"d M Y, h:i A" }}{% if bill.customer_name %} &middot; {{ bill.customer_name }}{% endif %}</p>
   <p class="text-sm text-slate-500 mt-1">Total: <span class="font-bold text-slate-800">₹{{ bill.total_amount }}</span></p>
+  <p class="text-xs text-slate-400 mt-0.5">Paid via {{ bill.get_payment_method_display }}</p>
 </div>
 
 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 divide-y divide-slate-100 mb-6">

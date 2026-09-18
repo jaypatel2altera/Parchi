@@ -35,6 +35,8 @@ def parse_cart(business, post_data):
             qty = Decimal(raw_qty)
         except InvalidOperation:
             raise CartError(f"Invalid quantity for {product.name}.")
+        if qty != qty.to_integral_value():
+            raise CartError(f"Quantity for {product.name} must be a whole number.")
         if qty <= 0:
             continue
         items.append({"product": product, "quantity": qty})
@@ -42,12 +44,22 @@ def parse_cart(business, post_data):
 
 
 @transaction.atomic
-def create_bill(business, user, customer_name, customer_phone, cart_items):
+def create_bill(business, user, customer_name, customer_phone, cart_items, payment_method=Bill.CASH):
+    """cart_items: list of {"product", "quantity"} and, optionally,
+    "unit_price"/"cost_price" overrides. Approving a pending order passes
+    the price the customer was quoted when they placed it (see
+    approve_order) instead of whatever the product costs by the time an
+    Admin gets around to approving it — a direct bill (no override) always
+    uses the product's current price, same as before."""
     if not cart_items:
         raise CartError("Add at least one product to the bill.")
 
     bill = Bill.objects.create(
-        business=business, created_by=user, customer_name=customer_name, customer_phone=customer_phone
+        business=business,
+        created_by=user,
+        customer_name=customer_name,
+        customer_phone=customer_phone,
+        payment_method=payment_method,
     )
     total = Decimal("0")
 
@@ -60,6 +72,8 @@ def create_bill(business, user, customer_name, customer_phone, cart_items):
     for item in cart_items:
         product = locked_products[item["product"].id]
         qty = item["quantity"]
+        unit_price = item.get("unit_price", product.selling_price)
+        cost_price = item.get("cost_price", product.cost_price)
 
         if product.stock_qty < qty:
             raise CartError(f"Only {product.stock_qty} {product.unit} of {product.name} left.")
@@ -70,15 +84,15 @@ def create_bill(business, user, customer_name, customer_phone, cart_items):
         if updated == 0:
             raise CartError(f"{product.name} stock just changed, please retry.")
 
-        line_total = (product.selling_price * qty).quantize(Decimal("0.01"))
+        line_total = (unit_price * qty).quantize(Decimal("0.01"))
         BillLineItem.objects.create(
             bill=bill,
             product=product,
             product_name_snapshot=product.name,
             unit_snapshot=str(product.unit),
             quantity=qty,
-            unit_price=product.selling_price,
-            cost_price_snapshot=product.cost_price,
+            unit_price=unit_price,
+            cost_price_snapshot=cost_price,
             line_total=line_total,
         )
         total += line_total
@@ -119,6 +133,7 @@ def create_order(business, customer_name, customer_phone, cart_items):
             unit_snapshot=str(product.unit),
             quantity=qty,
             unit_price_snapshot=product.selling_price,
+            cost_price_snapshot=product.cost_price,
         )
         total += line_total
 
@@ -128,12 +143,23 @@ def create_order(business, customer_name, customer_phone, cart_items):
 
 
 @transaction.atomic
-def approve_order(order, user):
+def approve_order(order, user, payment_method=Bill.CASH):
     if order.status != Order.PENDING:
         raise CartError("This order has already been decided.")
 
     cart_items = [
-        {"product": item.product, "quantity": item.quantity} for item in order.line_items.all()
+        {
+            "product": item.product,
+            "quantity": item.quantity,
+            "unit_price": item.unit_price_snapshot,
+            # Older orders placed before cost_price_snapshot existed have
+            # none recorded — fall back to the product's current cost rather
+            # than crash or silently bill at a margin of zero.
+            "cost_price": item.cost_price_snapshot
+            if item.cost_price_snapshot is not None
+            else item.product.cost_price,
+        }
+        for item in order.line_items.all()
     ]
     bill = create_bill(
         business=order.business,
@@ -141,6 +167,7 @@ def approve_order(order, user):
         customer_name=order.customer_name,
         customer_phone=order.customer_phone,
         cart_items=cart_items,
+        payment_method=payment_method,
     )
     order.status = Order.APPROVED
     order.bill = bill

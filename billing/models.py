@@ -10,6 +10,20 @@ from inventory.models import Product
 
 
 class Bill(models.Model):
+    CASH = "CASH"
+    ONLINE = "ONLINE"
+    UPI = "UPI"
+    # How this bill was actually settled, picked by staff when the bill is
+    # created/confirmed (never trusted from the customer — a free UPI link
+    # has no gateway callback, so there's no automatic way to know a UPI
+    # payment actually landed; staff confirm it themselves, e.g. against
+    # their bank/UPI app, before picking CASH/ONLINE/UPI here).
+    PAYMENT_METHOD_CHOICES = [
+        (CASH, "Cash"),
+        (ONLINE, "Online (store QR)"),
+        (UPI, "UPI (pay link)"),
+    ]
+
     public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, db_index=True)
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="bills")
     created_by = models.ForeignKey(
@@ -18,6 +32,7 @@ class Bill(models.Model):
     customer_name = models.CharField(max_length=100, blank=True)
     customer_phone = models.CharField(max_length=15, blank=True)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    payment_method = models.CharField(max_length=10, choices=PAYMENT_METHOD_CHOICES, default=CASH)
     pdf_file = models.FileField(upload_to="bills/%Y/%m/", blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
@@ -85,6 +100,7 @@ class OrderLineItem(models.Model):
     unit_snapshot = models.CharField(max_length=10)
     quantity = models.DecimalField(max_digits=10, decimal_places=3)
     unit_price_snapshot = models.DecimalField(max_digits=10, decimal_places=2)
+    cost_price_snapshot = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     def __str__(self):
         return f"{self.quantity} x {self.product_name_snapshot}"

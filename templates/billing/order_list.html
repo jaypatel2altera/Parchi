@@ -34,14 +34,27 @@
     </div>
     <p class="text-right text-sm font-bold text-slate-800 mb-3">Est. total: ₹{{ order.estimated_total }}</p>
 
-    <div class="flex gap-2">
-      <form method="post" action="{% url 'billing:order-reject' order.pk %}" class="flex-1">
+    <form method="post" action="{% url 'billing:order-reject' order.pk %}" class="mb-2">
+      {% csrf_token %}
+      <button type="submit" class="w-full border border-red-200 text-red-600 font-semibold text-sm rounded-xl py-2.5">Reject</button>
+    </form>
+
+    <p class="text-xs font-semibold text-slate-500 mb-1.5">Confirm — payment received via:</p>
+    <div class="grid grid-cols-3 gap-2">
+      <form method="post" action="{% url 'billing:order-approve' order.pk %}">
         {% csrf_token %}
-        <button type="submit" class="w-full border border-red-200 text-red-600 font-semibold text-sm rounded-xl py-2.5">Reject</button>
+        <input type="hidden" name="payment_method" value="CASH">
+        <button type="submit" class="w-full bg-brand-600 text-white font-semibold text-xs rounded-xl py-2.5">Cash</button>
       </form>
-      <form method="post" action="{% url 'billing:order-approve' order.pk %}" class="flex-1">
+      <form method="post" action="{% url 'billing:order-approve' order.pk %}">
         {% csrf_token %}
-        <button type="submit" class="w-full bg-brand-600 text-white font-semibold text-sm rounded-xl py-2.5">Approve</button>
+        <input type="hidden" name="payment_method" value="ONLINE">
+        <button type="submit" class="w-full bg-brand-600 text-white font-semibold text-xs rounded-xl py-2.5">Online</button>
+      </form>
+      <form method="post" action="{% url 'billing:order-approve' order.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="payment_method" value="UPI">
+        <button type="submit" class="w-full bg-brand-600 text-white font-semibold text-xs rounded-xl py-2.5">UPI</button>
       </form>
     </div>
   </div>

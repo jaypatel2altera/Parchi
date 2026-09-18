@@ -1,4 +1,5 @@
 import uuid
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.db import models
@@ -15,6 +16,9 @@ class Business(models.Model):
     phone = models.CharField(max_length=15, blank=True)
     email = models.EmailField(blank=True)
     address = models.TextField(blank=True)
+    # VPA (e.g. "name@bank") for the "Pay online" UPI link/QR shown on bills —
+    # money goes straight to this UPI ID, no payment gateway or fees involved.
+    upi_id = models.CharField(max_length=100, blank=True, verbose_name="UPI ID")
     # Encoded in this business's QR code as /o/<order_code>/ — a customer-facing
     # identifier, deliberately separate from `slug` so it's not guessable/enumerable.
     order_code = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
@@ -37,6 +41,18 @@ class Business(models.Model):
     @property
     def bill_count(self):
         return self.bills.count()
+
+    def upi_payment_link(self, amount, note=""):
+        """Standard UPI 'intent' link (upi://pay?...) recognised by every UPI
+        app (GPay, PhonePe, Paytm, ...) — money goes straight to this
+        business's UPI ID with no payment gateway or transaction fees.
+        Returns None if the business hasn't set a UPI ID."""
+        if not self.upi_id:
+            return None
+        params = {"pa": self.upi_id, "pn": self.name, "am": str(amount), "cu": "INR"}
+        if note:
+            params["tn"] = note
+        return f"upi://pay?{urlencode(params)}"
 
     @property
     def total_revenue(self):
