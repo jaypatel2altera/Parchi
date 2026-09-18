@@ -62,6 +62,31 @@ class Business(models.Model):
             params["tr"] = reference
         return f"upi://pay?{urlencode(params)}"
 
+    # Per-app deep link prefixes, swapped in for the generic "upi://pay"
+    # scheme. On iPhone, tapping a generic upi:// link doesn't show an app
+    # chooser like Android does — iOS just resolves it to whichever app
+    # claims that scheme (often WhatsApp, since it also registers "upi"),
+    # so a specific link per app is the only way to reach a given app
+    # reliably. Not verified against real devices — confirm before relying
+    # on it, since UPI apps don't publish these as a stable public API.
+    UPI_APP_SCHEMES = {
+        "googlepay": "gpay://upi/pay",
+        "phonepe": "phonepe://pay",
+        "cred": "credpay://upi/pay",
+    }
+
+    def upi_app_links(self, amount, reference=""):
+        """Same payment as upi_payment_link, one link per app in
+        UPI_APP_SCHEMES. Returns {} if the business hasn't set a UPI ID."""
+        if not self.upi_id:
+            return {}
+        params = {"pa": self.upi_id, "pn": self.name, "am": str(amount), "cu": "INR"}
+        if reference:
+            params["tn"] = reference
+            params["tr"] = reference
+        query = urlencode(params)
+        return {app: f"{scheme}?{query}" for app, scheme in self.UPI_APP_SCHEMES.items()}
+
     @property
     def total_revenue(self):
         from django.db.models import Sum

@@ -135,10 +135,14 @@ class PublicBillView(View):
 
     def get(self, request, public_id):
         bill = get_object_or_404(Bill, public_id=public_id)
-        pay_link = bill.business.upi_payment_link(
-            bill.total_amount, reference=upi_reference(bill.short_code, bill.customer_name)
+        reference = upi_reference(bill.short_code, bill.customer_name)
+        pay_link = bill.business.upi_payment_link(bill.total_amount, reference=reference)
+        app_links = bill.business.upi_app_links(bill.total_amount, reference=reference)
+        return render(
+            request,
+            "billing/public_bill.html",
+            {"bill": bill, "pay_link": pay_link, "app_links": app_links},
         )
-        return render(request, "billing/public_bill.html", {"bill": bill, "pay_link": pay_link})
 
 
 class PublicBillPDFView(View):
@@ -220,10 +224,14 @@ class OrderConfirmationView(View):
 
     def get(self, request, public_id):
         order = get_object_or_404(Order, public_id=public_id)
-        pay_link = order.business.upi_payment_link(
-            order.estimated_total, reference=upi_reference(order.short_code, order.customer_name)
+        reference = upi_reference(order.short_code, order.customer_name)
+        pay_link = order.business.upi_payment_link(order.estimated_total, reference=reference)
+        app_links = order.business.upi_app_links(order.estimated_total, reference=reference)
+        return render(
+            request,
+            "billing/order_confirmation.html",
+            {"order": order, "pay_link": pay_link, "app_links": app_links},
         )
-        return render(request, "billing/order_confirmation.html", {"order": order, "pay_link": pay_link})
 
 
 class OrderUPIQRView(View):
